@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, time
 
 # Function to fetch historical data
-def fetch_data(ticker, start_date, end_date, interval='60m'):
+def fetch_data(ticker, start_date, end_date, interval='1h'):
     data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
     return data
 
@@ -24,23 +24,49 @@ def segment_data(data):
         'newyork_sydney_overlap': ((time(0, 0), time(6, 0)), 'America/New_York'),
     }
 
-    segmented_data = {}
+    segmented_data = []
 
-    for segment, ((start_time, end_time), tz) in time_segments.items():
-        segment_df = data.between_time(start_time, end_time)
-        segment_df = segment_df.tz_localize('UTC').tz_convert(tz)
-        segmented_data[segment] = segment_df
+    # Iterate through each date in the data
+    for date in pd.date_range(start=data.index.min().date(), end=data.index.max().date()):
+        daily_data = data.loc[date.strftime('%Y-%m-%d')]
+        day_segments = {}
+        for segment, ((start_time, end_time), tz) in time_segments.items():
+            segment_df = daily_data.tz_convert(tz)
+            segment_df = segment_df.between_time(start_time, end_time)
+            if not segment_df.empty:
+                open_price = segment_df.iloc[0]['Open']
+                high_price = segment_df['High'].max()
+                low_price = segment_df['Low'].min()
+                close_price = segment_df.iloc[-1]['Close']
+                day_segments[segment] = {
+                    'Open': open_price,
+                    'High': high_price,
+                    'Low': low_price,
+                    'Close': close_price
+                }
+        if day_segments:
+            segmented_data.append((date.strftime('%Y-%m-%d'), day_segments))
 
     return segmented_data
 
-# Function to create candlesticks
+# Function to create candlesticks (OHLC data only)
 def create_candles(segmented_data):
     candles = {}
-    for segment, data in segmented_data.items():
-        if data.empty:
-            continue
-        ohlc = data.resample('1H').ohlc()
-        candles[segment] = ohlc
+    for date, segments in segmented_data:
+        for segment, data in segments.items():
+            if data['Open'] is not None:  # Check if the segment has any data
+                if segment not in candles:
+                    candles[segment] = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close'])
+                new_row = pd.DataFrame({
+                    'Date': [date],
+                    'Open': [data['Open']],
+                    'High': [data['High']],
+                    'Low': [data['Low']],
+                    'Close': [data['Close']]
+                })
+                # Ensure new_row is not empty or all-NA
+                if not new_row.empty and not new_row.isna().all().all():
+                    candles[segment] = pd.concat([candles[segment], new_row], ignore_index=True)
     return candles
 
 # Main function
