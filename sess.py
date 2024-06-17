@@ -1,6 +1,6 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 # Function to fetch historical data
 def fetch_data(ticker, start_date, end_date, interval='1h'):
@@ -26,10 +26,8 @@ def segment_data(data):
 
     segmented_data = []
 
-    # Iterate through each date in the data
     for date in pd.date_range(start=data.index.min().date(), end=data.index.max().date()):
         daily_data = data.loc[date.strftime('%Y-%m-%d')]
-        day_segments = {}
         for segment, ((start_time, end_time), tz) in time_segments.items():
             segment_df = daily_data.tz_convert(tz)
             segment_df = segment_df.between_time(start_time, end_time)
@@ -38,48 +36,29 @@ def segment_data(data):
                 high_price = segment_df['High'].max()
                 low_price = segment_df['Low'].min()
                 close_price = segment_df.iloc[-1]['Close']
-                day_segments[segment] = {
+                # Calculate the start and end datetime for the session
+                start_datetime = datetime.combine(date, start_time)
+                end_datetime = datetime.combine(date, end_time)
+                segmented_data.append({
+                    'Datetime': start_datetime,
+                    'Session': segment,
                     'Open': open_price,
                     'High': high_price,
                     'Low': low_price,
                     'Close': close_price
-                }
-        if day_segments:
-            segmented_data.append((date.strftime('%Y-%m-%d'), day_segments))
-
-    return segmented_data
-
-# Function to create candlesticks (OHLC data only)
-def create_candles(segmented_data):
-    candles = {}
-    for date, segments in segmented_data:
-        for segment, data in segments.items():
-            if data['Open'] is not None:  # Check if the segment has any data
-                if segment not in candles:
-                    candles[segment] = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close'])
-                new_row = pd.DataFrame({
-                    'Date': [date],
-                    'Open': [data['Open']],
-                    'High': [data['High']],
-                    'Low': [data['Low']],
-                    'Close': [data['Close']]
                 })
-                # Ensure new_row is not empty or all-NA
-                if not new_row.empty and not new_row.isna().all().all():
-                    candles[segment] = pd.concat([candles[segment], new_row], ignore_index=True)
-    return candles
+
+    return pd.DataFrame(segmented_data)
 
 # Main function
 def main():
     ticker = 'EURUSD=X'
-    start_date = '2023-06-10'
+    start_date = '2023-06-03'
     end_date = '2023-06-14'
     data = fetch_data(ticker, start_date, end_date)
     segmented_data = segment_data(data)
-    candles = create_candles(segmented_data)
     
-    for segment, candle_data in candles.items():
-        print(f"{segment}:\n{candle_data}\n")
+    print(segmented_data)
 
 if __name__ == "__main__":
     main()
