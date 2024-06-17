@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
+import json
 
 # Function to fetch historical data
 def fetch_data(ticker, start_date, end_date, interval='1h'):
@@ -36,16 +37,14 @@ def segment_data(data):
                 high_price = segment_df['High'].max()
                 low_price = segment_df['Low'].min()
                 close_price = segment_df.iloc[-1]['Close']
-                # Calculate the start and end datetime for the session
                 start_datetime = datetime.combine(date, start_time)
-                end_datetime = datetime.combine(date, end_time)
                 segmented_data.append({
-                    'Datetime': start_datetime,
-                    'Session': segment,
-                    'Open': open_price,
-                    'High': high_price,
-                    'Low': low_price,
-                    'Close': close_price
+                    'time': int(start_datetime.timestamp()),
+                    'session': segment,
+                    'open': open_price,
+                    'high': high_price,
+                    'low': low_price,
+                    'close': close_price
                 })
 
     return pd.DataFrame(segmented_data)
@@ -53,12 +52,15 @@ def segment_data(data):
 # Main function
 def main():
     ticker = 'EURUSD=X'
-    start_date = '2023-06-03'
-    end_date = '2023-06-14'
+    start_date = '2023-04-03'
+    end_date = '2023-06-17'
     data = fetch_data(ticker, start_date, end_date)
     segmented_data = segment_data(data)
     
-    print(segmented_data)
+    # Save the data to a JSON file
+    json_data = segmented_data.to_json(orient='records')
+    with open('segmented_data.json', 'w') as f:
+        f.write(json_data)
 
 if __name__ == "__main__":
     main()

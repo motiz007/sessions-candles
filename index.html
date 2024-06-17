@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView Lightweight Chart</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <div id="chart" style="width: 600px; height: 400px;"></div>
+    <script>
+        fetch('segmented_data.json')
+            .then(response => response.json())
+            .then(data => {
+                const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+                    width: 600,
+                    height: 400
+                });
+
+                const series = chart.addCandlestickSeries();
+
+                // Format the data for the chart
+                const chartData = data.map(item => ({
+                    time: item.time,
+                    open: item.open,
+                    high: item.high,
+                    low: item.low,
+                    close: item.close
+                }));
+
+                series.setData(chartData);
+            })
+            .catch(error => console.error('Error loading data:', error));
+    </script>
+</body>
+</html>
