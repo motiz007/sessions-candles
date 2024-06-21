@@ -1,7 +1,6 @@
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, time
-import json
 
 # Function to fetch historical data
 def fetch_data(ticker, start_date, end_date, interval='1h'):
@@ -25,7 +24,7 @@ def segment_data(data):
         'newyork_sydney_overlap': ((time(0, 0), time(6, 0)), 'America/New_York'),
     }
 
-    segmented_data = []
+    ohlc_data = []
 
     for date in pd.date_range(start=data.index.min().date(), end=data.index.max().date()):
         daily_data = data.loc[date.strftime('%Y-%m-%d')]
@@ -38,29 +37,27 @@ def segment_data(data):
                 low_price = segment_df['Low'].min()
                 close_price = segment_df.iloc[-1]['Close']
                 start_datetime = datetime.combine(date, start_time)
-                segmented_data.append({
-                    'time': int(start_datetime.timestamp()),
-                    'session': segment,
+                ohlc_data.append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'time': start_time.strftime('%H:%M'),
                     'open': open_price,
                     'high': high_price,
                     'low': low_price,
                     'close': close_price
                 })
 
-    return pd.DataFrame(segmented_data)
+    return pd.DataFrame(ohlc_data)
 
 # Main function
 def main():
     ticker = 'EURUSD=X'
-    start_date = '2023-04-03'
-    end_date = '2023-06-17'
+    start_date = '2024-04-03'
+    end_date = '2024-06-17'
     data = fetch_data(ticker, start_date, end_date)
-    segmented_data = segment_data(data)
+    ohlc_df = segment_data(data)
     
-    # Save the data to a JSON file
-    json_data = segmented_data.to_json(orient='records')
-    with open('segmented_data.json', 'w') as f:
-        f.write(json_data)
+    # Save the data to a CSV file
+    ohlc_df.to_csv('ohlc_data.csv', index=False)
 
 if __name__ == "__main__":
     main()

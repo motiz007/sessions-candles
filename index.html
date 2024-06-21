@@ -3,24 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradingView Lightweight Chart</title>
+    <title>TradingView Lightweight Charts Example</title>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
     <div id="chart" style="width: 600px; height: 400px;"></div>
+
     <script>
-        fetch('segmented_data.json')
-            .then(response => response.json())
-            .then(data => {
-                const chart = LightweightCharts.createChart(document.getElementById('chart'), {
-                    width: 600,
-                    height: 400
-                });
+        // Function to fetch JSON data from a file
+        async function fetchJSONData() {
+            const response = await fetch('segmented_data.json');
+            const data = await response.json();
+            return data;
+        }
 
-                const series = chart.addCandlestickSeries();
+        // Main function to load data and initialize the chart
+        async function initChart() {
+            try {
+                // Fetch the JSON data
+                const jsonData = await fetchJSONData();
 
-                // Format the data for the chart
-                const chartData = data.map(item => ({
+                // Convert the JSON data to the format required by the candlestick series
+                const candlestickData = jsonData.map(item => ({
                     time: item.time,
                     open: item.open,
                     high: item.high,
@@ -28,9 +32,36 @@
                     close: item.close
                 }));
 
-                series.setData(chartData);
-            })
-            .catch(error => console.error('Error loading data:', error));
+                // Initialize the chart
+                const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+                    width: 600,
+                    height: 400,
+                    layout: {
+                        backgroundColor: '#ffffff',
+                        textColor: '#000000',
+                    },
+                    grid: {
+                        vertLines: {
+                            color: '#e1e1e1',
+                        },
+                        horzLines: {
+                            color: '#e1e1e1',
+                        },
+                    },
+                });
+
+                // Add a candlestick series to the chart
+                const candlestickSeries = chart.addCandlestickSeries();
+
+                // Set the data to the series
+                candlestickSeries.setData(candlestickData);
+            } catch (error) {
+                console.error('Error fetching or processing data:', error);
+            }
+        }
+
+        // Initialize the chart when the page loads
+        window.onload = initChart;
     </script>
 </body>
 </html>
